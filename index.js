@@ -20,7 +20,7 @@ const validacao = joi.object({
 
 })
 async function verificarUsuario(name) {
-    const nome = await db.collection("bate_papo").findOne({
+    const nome = await db.collection("participante").findOne({
         name: name
     }) 
     if (nome) {
@@ -44,10 +44,10 @@ app.post("/participants", async(request, response) => {
         return
     } 
     console.log(verificacao)
-    db.collection("bate_papo").insertOne({
+    db.collection("participante").insertOne({
         name: name.name, lastStatus: Date.now()
     });
-    db.collection("bate_papo").insertOne({
+    db.collection("mensagem").insertOne({
         from: name.name,
         to: 'Todos',
         text: 'entra na sala...',
@@ -57,6 +57,10 @@ app.post("/participants", async(request, response) => {
     response.sendStatus(201)
 
 })
-
+app.get("/participants", (request, response) => {
+    db.collection("participante").find().toArray().then(participantes => {
+        response.send(participantes)
+    });
+});
 
 app.listen(5000)
