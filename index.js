@@ -19,10 +19,18 @@ const validacao = joi.object({
     name: joi.string().required()
 
 })
+const validar = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.string().valid('message', 'private_message').required() 
+
+
+})
+
 async function verificarUsuario(name) {
     const nome = await db.collection("participante").findOne({
         name: name
-    }) 
+    })
     if (nome) {
         return 'usuário ja existe';
     }
@@ -30,11 +38,11 @@ async function verificarUsuario(name) {
 
 
 }
-app.post("/participants", async(request, response) => {
+app.post("/participants", async (request, response) => {
     const name = request.body;
     const validou = validacao.validate(name)
-    const verificacao =await  verificarUsuario(name.name)
-    const dia = dayjs().locale('pt-br').format('HH:mm:ss')
+    const verificacao = await verificarUsuario(name.name)
+    const time = dayjs().locale('pt-br').format('HH:mm:ss')
     if (validou.error) {
         response.sendStatus(422)
         return
@@ -42,8 +50,7 @@ app.post("/participants", async(request, response) => {
     if (verificacao == "usuário ja existe") {
         response.sendStatus(409)
         return
-    } 
-    console.log(verificacao)
+    }
     db.collection("participante").insertOne({
         name: name.name, lastStatus: Date.now()
     });
@@ -52,7 +59,7 @@ app.post("/participants", async(request, response) => {
         to: 'Todos',
         text: 'entra na sala...',
         type: 'status',
-        time: dia
+        time: time
     });
     response.sendStatus(201)
 
@@ -62,5 +69,27 @@ app.get("/participants", (request, response) => {
         response.send(participantes)
     });
 });
+
+app.post("/messages", async (request, response) => {
+    const { user } = request.headers
+    const { to, text, type } = request.body
+    const validou = validar.validate(request.body)
+    const verificacao = await verificarUsuario(user)
+    const time = dayjs().locale('pt-br').format('HH:mm:ss')
+    
+    if(validou.error || verificacao != "usuário ja existe"){
+        response.sendStatus(422)
+        return
+    }
+   await db.collection("mensagem").insertOne({
+        from: user,
+        to: to,
+        text: text,
+        type: type,
+        time: time
+    });
+    response.sendStatus(201)
+});
+
 
 app.listen(5000)
