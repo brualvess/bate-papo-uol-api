@@ -22,7 +22,7 @@ const validacao = joi.object({
 const validar = joi.object({
     to: joi.string().required(),
     text: joi.string().required(),
-    type: joi.string().valid('message', 'private_message').required() 
+    type: joi.string().valid('message', 'private_message').required()
 
 
 })
@@ -76,12 +76,12 @@ app.post("/messages", async (request, response) => {
     const validou = validar.validate(request.body)
     const verificacao = await verificarUsuario(user)
     const time = dayjs().locale('pt-br').format('HH:mm:ss')
-    
-    if(validou.error || verificacao != "usuário ja existe"){
+
+    if (validou.error || verificacao != "usuário ja existe") {
         response.sendStatus(422)
         return
     }
-   await db.collection("mensagem").insertOne({
+    await db.collection("mensagem").insertOne({
         from: user,
         to: to,
         text: text,
@@ -90,6 +90,27 @@ app.post("/messages", async (request, response) => {
     });
     response.sendStatus(201)
 });
+
+app.get("/messages", (request, response) => {
+    const limit = parseInt(request.query.limit);
+    const { user } = request.headers
+    db.collection("mensagem").find({ $or: [ { to: user}, { to: "Todos"}, {from : user} ] }).limit(limit).sort({_id: 1}).toArray().then(mensagens => {
+        response.send(mensagens)
+    });
+   
+});
+app.post("/status", async (request, response) => {
+    const { user } = request.headers
+    const participante = await verificarUsuario(user)
+    console.log(participante)
+    if (participante != "usuário ja existe") {
+        response.sendStatus(404)
+        return
+    } 
+    db.collection("participante").updateOne({name: user},{$set:{lastStatus:Date.now()}})
+    response.sendStatus(200)
+});
+
 
 
 app.listen(5000)
