@@ -1,9 +1,10 @@
 import express, { json } from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import joi from 'joi'
 import dayjs from 'dayjs'
+
 let db;
 dotenv.config()
 const mongoClient = new MongoClient(process.env.MONGO_URI);
@@ -102,7 +103,7 @@ app.get("/messages", (request, response) => {
 app.post("/status", async (request, response) => {
     const { user } = request.headers
     const participante = await verificarUsuario(user)
-    console.log(participante)
+   
     if (participante != "usuário ja existe") {
         response.sendStatus(404)
         return
@@ -111,6 +112,27 @@ app.post("/status", async (request, response) => {
     response.sendStatus(200)
 });
 
+setInterval (async()=>{
+    const time = dayjs().locale('pt-br').format('HH:mm:ss')
+    const participantes = await db.collection("participante").find().toArray()
+    for(let i = 0; i < participantes.length; i++){
+        let participante = participantes[i]
+        const calculo = (Date.now() - participante.lastStatus) / 1000
+        if(calculo > 10){
+            await db.collection("participante").deleteOne({ _id: new ObjectId(participante._id) })
+            await db.collection("mensagem").insertOne({
+                from: participante.name,
+                to: "Todos",
+                text: "sai da sala...",
+                type: "status",
+                time: time
+            });
+
+        }
+
+    }
+
+},15000) 
 
 
 app.listen(5000)
